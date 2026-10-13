@@ -1,8 +1,6 @@
 const PRODUCTION_API_URL = "https://spice-masala-api.onrender.com";
 
 export function getApiBaseUrl(): string {
-  const envUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
-  if (envUrl) return envUrl.replace(/\/$/, "");
   return import.meta.env.PROD ? PRODUCTION_API_URL : "/api";
 }
 
