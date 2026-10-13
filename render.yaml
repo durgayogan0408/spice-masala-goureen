@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: spice-masala-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        value: https://spice-masala-goureen.vercel.app
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: BUSINESS_NAME
+        value: Spice & Masala Homemade
+      - key: CURRENCY
+        value: INR
+      - key: DELIVERY_FEE
+        value: "60"
+      - key: SHIPROCKET_MODE
+        value: mock
