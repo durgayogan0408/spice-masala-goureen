@@ -15,12 +15,14 @@ function priceFor(variant: Variant) {
   return variant.salePrice ?? variant.price;
 }
 
-function Header() {
+function Header({ onOpenApiModal }: { onOpenApiModal: () => void }) {
   const { count } = useStore();
   const { user, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const activeUrl = getApiBaseUrl();
+  const isCustom = activeUrl !== "/api";
   const navigate = useNavigate();
   const onSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -29,7 +31,18 @@ function Header() {
   };
   return (
     <>
-      <div className="announcement"><Sparkles size={14} /> Small-batch goodness, made fresh in our family kitchen <span>•</span> Free delivery over ₹999</div>
+      <div className="announcement">
+        <Sparkles size={14} /> Small-batch goodness, made fresh in our family kitchen <span>•</span> Free delivery over ₹999
+        <button
+          type="button"
+          className={`announcement-api-btn ${isCustom ? "is-custom" : ""}`}
+          onClick={onOpenApiModal}
+          title="Configure custom backend API URL"
+        >
+          <Settings size={11} />
+          <span>API: {activeUrl}</span>
+        </button>
+      </div>
       <header className="site-header">
         <button className="icon-button mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">{menuOpen ? <X /> : <Menu />}</button>
         <Link className="brand" to="/" aria-label="Spice and Masala home">
@@ -43,6 +56,16 @@ function Header() {
           <Link to="/orders" onClick={() => setMenuOpen(false)}>Track order</Link>
         </nav>
         <div className="header-actions">
+          <button
+            type="button"
+            className={`api-testing-pill header-api-pill ${isCustom ? "is-custom" : ""}`}
+            onClick={onOpenApiModal}
+            title="Configure custom backend API URL for testing"
+          >
+            <Settings size={12} />
+            <span>API URL</span>
+            {isCustom && <small>(custom)</small>}
+          </button>
           <form className={searchOpen ? "search-form mobile-search-open" : "search-form"} onSubmit={onSearch}>
             <Search size={17} />
             <input aria-label="Search products" value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Find your favourite..." />
@@ -140,12 +163,11 @@ function ApiConfigModal({ open, onClose }: { open: boolean; onClose: () => void 
   );
 }
 
-function Footer() {
-  const [modalOpen, setModalOpen] = useState(false);
+function Footer({ onOpenApiModal }: { onOpenApiModal: () => void }) {
   const activeUrl = getApiBaseUrl();
   const isCustom = activeUrl !== "/api";
 
-  return <>
+  return (
     <footer className="site-footer">
       <div className="footer-main">
         <div><Link className="brand footer-brand" to="/"><span className="brand-mark">s<span>m</span></span><span className="brand-copy"><strong>spice &amp; masala</strong><small>HOMEMADE WITH HEART</small></span></Link><p>A little warmth from our kitchen to yours. Made in small batches, with ingredients you can pronounce.</p></div>
@@ -158,7 +180,7 @@ function Footer() {
         <button
           type="button"
           className={`api-testing-pill ${isCustom ? "is-custom" : ""}`}
-          onClick={() => setModalOpen(true)}
+          onClick={onOpenApiModal}
           title="Configure custom API URL for testing"
         >
           <Settings size={12} />
@@ -168,8 +190,7 @@ function Footer() {
         <span>Made with warmth in India <span className="footer-heart">♥</span></span>
       </div>
     </footer>
-    <ApiConfigModal open={modalOpen} onClose={() => setModalOpen(false)} />
-  </>;
+  );
 }
 
 function ProductCard({ product }: { product: Product }) {
@@ -665,21 +686,29 @@ function AdminRoute() {
 }
 
 function AppFrame() {
+  const [modalOpen, setModalOpen] = useState(false);
   const location = useLocation();
   const admin = location.pathname.startsWith("/admin");
-  return <>{!admin && <Header />}<Routes>
-    <Route path="/" element={<HomePage />} />
-    <Route path="/shop" element={<ShopPage />} />
-    <Route path="/product/:slug" element={<ProductPage />} />
-    <Route path="/cart" element={<CartPage />} />
-    <Route path="/checkout" element={<CheckoutPage />} />
-    <Route path="/login" element={<LoginPage />} />
-    <Route path="/orders" element={<OrdersPage />} />
-    <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
-    <Route path="/policies" element={<PoliciesPage />} />
-    <Route path="/admin/*" element={<AdminRoute />} />
-    <Route path="*" element={<main className="page-shell"><div className="empty-state"><CircleHelp size={38} /><h2>We can’t find that page.</h2><Link className="button button-primary" to="/">Back to our kitchen</Link></div></main>} />
-  </Routes>{!admin && <Footer />}</>;
+  return (
+    <>
+      {!admin && <Header onOpenApiModal={() => setModalOpen(true)} />}
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/shop" element={<ShopPage />} />
+        <Route path="/product/:slug" element={<ProductPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+        <Route path="/policies" element={<PoliciesPage />} />
+        <Route path="/admin/*" element={<AdminRoute />} />
+        <Route path="*" element={<main className="page-shell"><div className="empty-state"><CircleHelp size={38} /><h2>We can’t find that page.</h2><Link className="button button-primary" to="/">Back to our kitchen</Link></div></main>} />
+      </Routes>
+      {!admin && <Footer onOpenApiModal={() => setModalOpen(true)} />}
+      <ApiConfigModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
+  );
 }
 
 export default function App() {

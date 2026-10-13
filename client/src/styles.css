@@ -602,6 +602,40 @@ h1, h2 { font-family: var(--serif); font-weight: 600; letter-spacing: -.035em; }
   .admin-add-button { padding-inline: 8px; font-size: 9px; }
 }
 
+/* Announcement & Header API buttons */
+.announcement-api-btn {
+  margin-left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.announcement-api-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+.announcement-api-btn.is-custom {
+  background: #f4d788;
+  color: #553d10;
+  border-color: #f4d788;
+  font-weight: 700;
+}
+.header-api-pill {
+  padding: 6px 12px;
+  font-size: 11px;
+}
+@media (max-width: 650px) {
+  .header-api-pill {
+    display: none;
+  }
+}
+
 /* Custom API URL testing styles */
 .api-testing-pill {
   display: inline-flex;
