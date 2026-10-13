@@ -1,9 +1,47 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { Component, useEffect, useState, type ErrorInfo, type FormEvent, type ReactNode } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, BadgeCheck, Check, ChevronDown, CircleHelp, Leaf, Menu, Minus, PackageCheck, Plus, Search, Settings, ShieldCheck, ShoppingBag, Sparkles, Truck, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, Check, ChevronDown, CircleHelp, Leaf, Menu, Minus, PackageCheck, Plus, RefreshCw, Search, Settings, ShieldCheck, ShoppingBag, Sparkles, Truck, X } from "lucide-react";
 import { getApiBaseUrl, money, request, setApiBaseUrl, testApiHealth, type Category, type Order, type Product, type Variant } from "./lib/api";
 import { useAuth } from "./lib/AuthContext";
 import { useStore } from "./lib/StoreContext";
+
+class ErrorBoundary extends Component<{ children: ReactNode; onOpenApiModal?: () => void }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: ReactNode; onOpenApiModal?: () => void }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("ErrorBoundary caught:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main className="page-shell">
+          <div className="error-panel" style={{ maxWidth: 640, margin: "40px auto", padding: 24, textAlign: "center" }}>
+            <h2 style={{ marginBottom: 12 }}>Connection or Rendering Issue</h2>
+            <p style={{ marginBottom: 16 }}>
+              {this.state.error?.message || "Something went wrong while displaying this page."}
+            </p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+              <button className="button button-primary" onClick={() => window.location.reload()}>
+                <RefreshCw size={15} /> Reload page
+              </button>
+              {this.props.onOpenApiModal && (
+                <button className="button button-outline" onClick={this.props.onOpenApiModal}>
+                  <Settings size={15} /> Configure Backend API URL
+                </button>
+              )}
+            </div>
+          </div>
+        </main>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const fallbackImage = "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=1000&q=85";
 
@@ -222,9 +260,13 @@ function HomePage() {
       request<{ products: Product[] }>("/products?featured=true&limit=4"),
       request<{ categories: Category[] }>("/categories"),
     ]).then(([productResult, categoryResult]) => {
-      setProducts(productResult.products);
-      setCategories(categoryResult.categories);
-    }).catch((reason: Error) => setError(reason.message));
+      setProducts(productResult?.products || []);
+      setCategories(categoryResult?.categories || []);
+    }).catch((reason: Error) => {
+      setProducts([]);
+      setCategories([]);
+      setError(reason.message);
+    });
   }, []);
   return <>
     <main>
@@ -285,12 +327,16 @@ function ShopPage() {
       request<{ products: Product[] }>(`/products?limit=48&sort=${sort}${search ? `&q=${encodeURIComponent(search)}` : ""}${category ? `&category=${encodeURIComponent(category)}` : ""}`),
       request<{ categories: Category[] }>("/categories"),
     ]).then(([productResult, categoryResult]) => {
-      setProducts(productResult.products);
-      setCategories(categoryResult.categories);
+      setProducts(productResult?.products || []);
+      setCategories(categoryResult?.categories || []);
       setError("");
-    }).catch((reason: Error) => setError(reason.message)).finally(() => setBusy(false));
+    }).catch((reason: Error) => {
+      setProducts([]);
+      setCategories([]);
+      setError(reason.message);
+    }).finally(() => setBusy(false));
   }, [search, category, sort]);
-  const activeCategory = categories.find((item) => item.slug === category);
+  const activeCategory = (categories || []).find((item) => item.slug === category);
   return <main className="page-shell shop-page">
     <div className="page-kicker"><Link to="/">Home</Link><span>/</span> Shop</div>
     <div className="shop-heading"><div><div className="eyebrow">Made with love, ready to share</div><h1>{activeCategory?.name || (search ? `Searching “${search}”` : "Shop the kitchen")}</h1><p>Homemade favourites, prepared in little batches just for your table.</p></div><label className="sort-select">Sort by <select value={sort} onChange={(event) => setSort(event.target.value)}><option value="popular">Our favourites</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select><ChevronDown size={15} /></label></div>
@@ -692,19 +738,21 @@ function AppFrame() {
   return (
     <>
       {!admin && <Header onOpenApiModal={() => setModalOpen(true)} />}
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/shop" element={<ShopPage />} />
-        <Route path="/product/:slug" element={<ProductPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/orders" element={<OrdersPage />} />
-        <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
-        <Route path="/policies" element={<PoliciesPage />} />
-        <Route path="/admin/*" element={<AdminRoute />} />
-        <Route path="*" element={<main className="page-shell"><div className="empty-state"><CircleHelp size={38} /><h2>We can’t find that page.</h2><Link className="button button-primary" to="/">Back to our kitchen</Link></div></main>} />
-      </Routes>
+      <ErrorBoundary onOpenApiModal={() => setModalOpen(true)}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/shop" element={<ShopPage />} />
+          <Route path="/product/:slug" element={<ProductPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+          <Route path="/policies" element={<PoliciesPage />} />
+          <Route path="/admin/*" element={<AdminRoute />} />
+          <Route path="*" element={<main className="page-shell"><div className="empty-state"><CircleHelp size={38} /><h2>We can’t find that page.</h2><Link className="button button-primary" to="/">Back to our kitchen</Link></div></main>} />
+        </Routes>
+      </ErrorBoundary>
       {!admin && <Footer onOpenApiModal={() => setModalOpen(true)} />}
       <ApiConfigModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>

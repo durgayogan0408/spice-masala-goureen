@@ -68,7 +68,17 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const endpoint = getFullApiUrl(path);
   const response = await fetch(endpoint, { ...options, headers });
-  const body = await response.json().catch(() => ({}));
+  const contentType = response.headers.get("content-type") || "";
+  let body: any = {};
+  if (contentType.includes("application/json")) {
+    body = await response.json().catch(() => ({}));
+  } else {
+    // If server responded with HTML (like an SPA fallback / 404), it's not valid API JSON
+    const text = await response.text().catch(() => "");
+    if (text.trim().startsWith("<")) {
+      throw new Error(`API endpoint not reachable at "${endpoint}". Please configure your backend API URL.`);
+    }
+  }
   if (!response.ok) throw new Error(body.message || `Request failed (${response.status}).`);
   return body as T;
 }
