@@ -1,12 +1,12 @@
 import { Component, useEffect, useState, type ErrorInfo, type FormEvent, type ReactNode } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, BadgeCheck, Check, ChevronDown, CircleHelp, Leaf, Menu, Minus, PackageCheck, Plus, RefreshCw, Search, Settings, ShieldCheck, ShoppingBag, Sparkles, Truck, X } from "lucide-react";
-import { getApiBaseUrl, money, request, setApiBaseUrl, testApiHealth, type Category, type Order, type Product, type Variant } from "./lib/api";
+import { ArrowRight, BadgeCheck, Check, ChevronDown, CircleHelp, Leaf, Menu, Minus, PackageCheck, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, Sparkles, Truck, X } from "lucide-react";
+import { money, request, type Category, type Order, type Product, type Variant } from "./lib/api";
 import { useAuth } from "./lib/AuthContext";
 import { useStore } from "./lib/StoreContext";
 
-class ErrorBoundary extends Component<{ children: ReactNode; onOpenApiModal?: () => void }, { hasError: boolean; error: Error | null }> {
-  constructor(props: { children: ReactNode; onOpenApiModal?: () => void }) {
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -21,7 +21,7 @@ class ErrorBoundary extends Component<{ children: ReactNode; onOpenApiModal?: ()
       return (
         <main className="page-shell">
           <div className="error-panel" style={{ maxWidth: 640, margin: "40px auto", padding: 24, textAlign: "center" }}>
-            <h2 style={{ marginBottom: 12 }}>Connection or Rendering Issue</h2>
+            <h2 style={{ marginBottom: 12 }}>Something went wrong</h2>
             <p style={{ marginBottom: 16 }}>
               {this.state.error?.message || "Something went wrong while displaying this page."}
             </p>
@@ -29,11 +29,6 @@ class ErrorBoundary extends Component<{ children: ReactNode; onOpenApiModal?: ()
               <button className="button button-primary" onClick={() => window.location.reload()}>
                 <RefreshCw size={15} /> Reload page
               </button>
-              {this.props.onOpenApiModal && (
-                <button className="button button-outline" onClick={this.props.onOpenApiModal}>
-                  <Settings size={15} /> Configure Backend API URL
-                </button>
-              )}
             </div>
           </div>
         </main>
@@ -53,14 +48,12 @@ function priceFor(variant: Variant) {
   return variant.salePrice ?? variant.price;
 }
 
-function Header({ onOpenApiModal }: { onOpenApiModal: () => void }) {
+function Header() {
   const { count } = useStore();
   const { user, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const activeUrl = getApiBaseUrl();
-  const isCustom = activeUrl !== "/api";
   const navigate = useNavigate();
   const onSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -71,15 +64,6 @@ function Header({ onOpenApiModal }: { onOpenApiModal: () => void }) {
     <>
       <div className="announcement">
         <Sparkles size={14} /> Small-batch goodness, made fresh in our family kitchen <span>•</span> Free delivery over ₹999
-        <button
-          type="button"
-          className={`announcement-api-btn ${isCustom ? "is-custom" : ""}`}
-          onClick={onOpenApiModal}
-          title="Configure custom backend API URL"
-        >
-          <Settings size={11} />
-         {/* <span>API: {activeUrl}</span> */}
-        </button>
       </div>
       <header className="site-header">
         <button className="icon-button mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">{menuOpen ? <X /> : <Menu />}</button>
@@ -94,16 +78,6 @@ function Header({ onOpenApiModal }: { onOpenApiModal: () => void }) {
           <Link to="/orders" onClick={() => setMenuOpen(false)}>Track order</Link>
         </nav>
         <div className="header-actions">
-          <button
-            type="button"
-            className={`api-testing-pill header-api-pill ${isCustom ? "is-custom" : ""}`}
-            onClick={onOpenApiModal}
-            title="Configure custom backend API URL for testing"
-          >
-            <Settings size={12} />
-            <span>API URL</span>
-            {isCustom && <small>(custom)</small>}
-          </button>
           <form className={searchOpen ? "search-form mobile-search-open" : "search-form"} onSubmit={onSearch}>
             <Search size={17} />
             <input aria-label="Search products" value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Find your favourite..." />
@@ -117,94 +91,7 @@ function Header({ onOpenApiModal }: { onOpenApiModal: () => void }) {
   );
 }
 
-function ApiConfigModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [urlInput, setUrlInput] = useState(() => {
-    const current = getApiBaseUrl();
-    return current === "/api" ? "" : current;
-  });
-  const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
-  const [testing, setTesting] = useState(false);
-
-  if (!open) return null;
-
-  async function handleTest() {
-    setTesting(true);
-    setStatus(null);
-    try {
-      const res = await testApiHealth(urlInput.trim() || undefined);
-      setStatus(res);
-    } finally {
-      setTesting(false);
-    }
-  }
-
-  function handleSave() {
-    setApiBaseUrl(urlInput.trim() || null);
-    onClose();
-    window.location.reload();
-  }
-
-  function handleReset() {
-    setApiBaseUrl(null);
-    setUrlInput("");
-    setStatus(null);
-    onClose();
-    window.location.reload();
-  }
-
-  return (
-    <div className="api-modal-backdrop" onClick={onClose}>
-      <div className="api-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="api-modal-header">
-          <div>
-            <h3>Testing: Custom API URL</h3>
-            <p>Point this storefront to your local, staging or hosted backend</p>
-          </div>
-          <button className="icon-button" onClick={onClose} aria-label="Close modal"><X size={18} /></button>
-        </div>
-        <div className="api-modal-body">
-          <label>
-            Backend API Base URL
-            <input
-              type="text"
-              placeholder="e.g. http://localhost:4000 or https://your-backend.com"
-              value={urlInput}
-              onChange={(e) => { setUrlInput(e.target.value); setStatus(null); }}
-            />
-          </label>
-          <small className="api-modal-hint">
-            Active: <code>{getApiBaseUrl()}</code> · Leave blank to default to <code>/api</code>.
-          </small>
-          {status && (
-            <div className={`api-status-banner ${status.ok ? "status-success" : "status-error"}`}>
-              {status.ok ? <Check size={16} /> : <X size={16} />}
-              <span>{status.message}</span>
-            </div>
-          )}
-          <div className="api-modal-tip">
-            <strong>Testing tip:</strong> You can also append <code>?apiUrl=YOUR_URL</code> to any page URL.
-          </div>
-        </div>
-        <div className="api-modal-footer">
-          <button type="button" className="button button-outline" onClick={handleTest} disabled={testing}>
-            {testing ? "Testing..." : "Test Connection"}
-          </button>
-          <button type="button" className="text-button text-button-reset" onClick={handleReset}>
-            Reset to /api
-          </button>
-          <button type="button" className="button button-primary" onClick={handleSave}>
-            Save &amp; Reload
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Footer({ onOpenApiModal }: { onOpenApiModal: () => void }) {
-  const activeUrl = getApiBaseUrl();
-  const isCustom = activeUrl !== "/api";
-
+function Footer() {
   return (
     <footer className="site-footer">
       <div className="footer-main">
@@ -215,16 +102,6 @@ function Footer({ onOpenApiModal }: { onOpenApiModal: () => void }) {
       </div>
       <div className="footer-bottom">
         <span>© 2025 Spice &amp; Masala Homemade</span>
-        <button
-          type="button"
-          className={`api-testing-pill ${isCustom ? "is-custom" : ""}`}
-          onClick={onOpenApiModal}
-          title="Configure custom API URL for testing"
-        >
-          <Settings size={12} />
-          <span>API: {activeUrl}</span>
-          {isCustom && <small>(custom)</small>}
-        </button>
         <span>Made with warmth in India <span className="footer-heart">♥</span></span>
       </div>
     </footer>
@@ -732,13 +609,12 @@ function AdminRoute() {
 }
 
 function AppFrame() {
-  const [modalOpen, setModalOpen] = useState(false);
   const location = useLocation();
   const admin = location.pathname.startsWith("/admin");
   return (
     <>
-      {!admin && <Header onOpenApiModal={() => setModalOpen(true)} />}
-      <ErrorBoundary onOpenApiModal={() => setModalOpen(true)}>
+      {!admin && <Header />}
+      <ErrorBoundary>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/shop" element={<ShopPage />} />
@@ -753,8 +629,7 @@ function AppFrame() {
           <Route path="*" element={<main className="page-shell"><div className="empty-state"><CircleHelp size={38} /><h2>We can’t find that page.</h2><Link className="button button-primary" to="/">Back to our kitchen</Link></div></main>} />
         </Routes>
       </ErrorBoundary>
-      {!admin && <Footer onOpenApiModal={() => setModalOpen(true)} />}
-      <ApiConfigModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      {!admin && <Footer />}
     </>
   );
 }
