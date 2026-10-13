@@ -1,0 +1,12 @@
+node_modules/
+dist/
+client/dist/
+*.tsbuildinfo
+.env
+.env*.local
+*.env
+server/.env
+.DS_Store
+coverage/
+.vercel/
+
