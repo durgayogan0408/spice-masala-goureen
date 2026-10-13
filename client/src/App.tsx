@@ -78,7 +78,7 @@ function Header({ onOpenApiModal }: { onOpenApiModal: () => void }) {
           title="Configure custom backend API URL"
         >
           <Settings size={11} />
-          <span>API: {activeUrl}</span>
+         {/* <span>API: {activeUrl}</span> */}
         </button>
       </div>
       <header className="site-header">
